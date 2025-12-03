@@ -225,22 +225,9 @@ const PlayerContent = ({ song, songUrl }) => {
           {/* UPDATED: Add to Playlist Button (Cyberpunk Style) */}
           <button
             onClick={() => {
-              const normalizedSong = {
-                title: song.title,
-                author: song.artistsNames ?? song.author ?? null,
-                song_url: song.streaming?.mp3 ?? song.song_url ?? null,
-                image_url: song.thumbnailM ?? song.image_url ?? null,
-                duration: song.duration ?? null,
-                play_count: null,
-                genre_id: null,
-                author_id: null
-              };
-
-              router.push(
-                "/add-to-playlist?song=" +
-                encodeURIComponent(JSON.stringify(normalizedSong))
-              );
-            }}
+            if (!song?.id) return;
+            router.push(`/add-to-playlist?song_id=${song.id}`);
+          }}
             disabled={!song}
             className="
               relative group flex items-center justify-center h-8 w-8 
