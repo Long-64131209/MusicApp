@@ -77,56 +77,68 @@ const Sidebar = ({ children }) => {
   // =========================
   //       Realtime Setup
   // =========================
-    useEffect(() => {
-    let ch1 = null;
-    let ch2 = null;
+  useEffect(() => {
+  let ch1 = null;
+  let ch2 = null;
 
-    const init = async () => {
-      // Luôn fetch 1 lần để đảm bảo có dữ liệu
-      await fetchPlaylists();
+  const init = async () => {
+    await fetchPlaylists();
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
+    // Lấy user hiện tại
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) return;
 
-      if (!user) return;
+    // Realtime playlists
+    ch1 = supabase
+      .channel("rt-playlists")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "playlists",
+          filter: `user_id=eq.${user.id}`
+        },
+        fetchPlaylists
+      )
+      .subscribe();
 
-      // Realtime playlists
-      ch1 = supabase
-        .channel("rt-playlists")
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "playlists",
-            filter: `user_id=eq.${user.id}`
-          },
-          fetchPlaylists
-        )
-        .subscribe();
+    // Realtime playlist_songs
+    ch2 = supabase
+      .channel("rt-playlist-songs")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "playlist_songs"
+        },
+        fetchPlaylists
+      )
+      .subscribe();
+  };
 
-      // Realtime playlist_songs
-      ch2 = supabase
-        .channel("rt-playlist-songs")
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "playlist_songs"
-          },
-          fetchPlaylists
-        )
-        .subscribe();
-    };
+  init();
 
-    init();
+  // ===================================
+  // 🔥 FIX QUAN TRỌNG: Lắng nghe sự kiện LOGIN/LOGOUT
+  // ===================================
+  const authListener = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_IN") {
+      fetchPlaylists();        // fetch lại khi login
+    }
+    if (event === "SIGNED_OUT") {
+      setPlaylists([]);        // clear playlist khi logout
+    }
+  });
 
-    return () => {
-      if (ch1) supabase.removeChannel(ch1);
-      if (ch2) supabase.removeChannel(ch2);
-    };
-  }, []);
+  return () => {
+    if (ch1) supabase.removeChannel(ch1);
+    if (ch2) supabase.removeChannel(ch2);
+    authListener.data.subscription.unsubscribe();
+  };
+}, []);
 
 
   // =========================

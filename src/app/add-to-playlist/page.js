@@ -108,22 +108,53 @@ export default function AddToPlaylistPage() {
     setAdding(true);
     setMessage(null);
 
-    const rows = selected.map((pid) => ({
-      playlist_id: pid,
-      song_id: song.id,
-      added_at: new Date(),
-    }));
+    try {
+      // Lấy toàn bộ playlist_songs trùng bài hát
+      const { data: existing } = await supabase
+        .from("playlist_songs")
+        .select("playlist_id")
+        .in("playlist_id", selected)
+        .eq("song_id", song.id);
 
-    const { error } = await supabase
-      .from("playlist_songs")
-      .insert(rows);
+      // Playlist đã có bài hát
+      const existedPlaylists = existing?.map((e) => e.playlist_id) || [];
 
-    if (error) {
-      console.error(error);
-      setMessage({ type: "error", text: "Không thể thêm bài hát!" });
-    } else {
-      setMessage({ type: "success", text: "Đã thêm vào playlist!" });
-      setTimeout(() => router.back(), 500);
+      // Playlist chưa có bài hát
+      const newPlaylists = selected.filter(
+        (pid) => !existedPlaylists.includes(pid)
+      );
+
+      // Nếu tất cả playlist đều đã có bài hát
+      if (newPlaylists.length === 0) {
+        setMessage({ type: "error", text: "Bài hát này đã có trong Playlist!" });
+        setAdding(false);
+        return;
+      }
+
+      // Tạo rows để insert
+      const rows = newPlaylists.map((pid) => ({
+        playlist_id: pid,
+        song_id: song.id,
+        added_at: new Date(),
+      }));
+
+      const { error } = await supabase
+        .from("playlist_songs")
+        .insert(rows);
+
+      if (error) {
+        console.error(error);
+        setMessage({ type: "error", text: "Không thể thêm bài hát!" });
+      } else {
+        setMessage({
+          type: "success",
+          text: `Đã thêm vào ${newPlaylists.length} playlist!`,
+        });
+        setTimeout(() => router.back(), 500);
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: "error", text: "Đã xảy ra lỗi!" });
     }
 
     setAdding(false);
