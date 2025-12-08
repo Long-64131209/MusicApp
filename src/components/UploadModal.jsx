@@ -38,6 +38,7 @@ const UploadModal = () => {
   const [isPublic, setIsPublic] = useState("true");
   const [songFile, setSongFile] = useState(null);
   const [imageFile, setImageFile] = useState(null);
+  const [songDuration, setSongDuration] = useState(0);
 
   // Reset form khi đóng modal
   useEffect(() => {
@@ -47,6 +48,7 @@ const UploadModal = () => {
       setIsPublic("true");
       setSongFile(null);
       setImageFile(null);
+      setSongDuration(0);
       setIsLoading(false);
     }
   }, [isOpen]);
@@ -113,7 +115,8 @@ const UploadModal = () => {
         image_url: imageUrlData.publicUrl,
         song_url: songUrlData.publicUrl,
         is_public: isAdmin ? true : (isPublic === 'true'),
-        play_count: 0
+        play_count: 0,
+        duration: songDuration
       });
 
       if (dbError) throw dbError;
@@ -135,6 +138,42 @@ const UploadModal = () => {
       setIsLoading(false);
     }
   }
+
+  // Function to extract audio duration
+  const extractAudioDuration = (file) => {
+    return new Promise((resolve) => {
+      const audio = new Audio();
+      audio.preload = 'metadata';
+
+      audio.onloadedmetadata = () => {
+        resolve(audio.duration);
+      };
+
+      audio.onerror = () => {
+        resolve(0); // Return 0 if can't extract duration
+      };
+
+      audio.src = URL.createObjectURL(file);
+    });
+  };
+
+  // Handle song file selection
+  const handleSongFileChange = async (e) => {
+    const file = e.target.files[0];
+    setSongFile(file);
+
+    if (file) {
+      try {
+        const duration = await extractAudioDuration(file);
+        setSongDuration(Math.floor(duration)); // Store as integer seconds
+      } catch (error) {
+        console.error("Error extracting duration:", error);
+        setSongDuration(0);
+      }
+    } else {
+      setSongDuration(0);
+    }
+  };
 
   // Nếu modal không mở thì không render gì cả
   if (!isOpen) return null;
@@ -185,11 +224,11 @@ const UploadModal = () => {
                   <div className="bg-neutral-900/50 p-4 rounded-lg border border-neutral-700 flex flex-col items-center gap-2 cursor-pointer relative hover:border-emerald-500/50 transition group">
                       <Music size={24} className={`transition ${songFile ? 'text-emerald-400' : 'text-neutral-500 group-hover:text-emerald-500'}`}/>
                       <span className="text-[10px] text-neutral-400 text-center truncate w-full">{songFile ? songFile.name : "Chọn file MP3"}</span>
-                      <input 
-                          type="file" 
-                          accept=".mp3,audio/*" 
-                          disabled={isLoading} 
-                          onChange={(e) => setSongFile(e.target.files[0])}
+                      <input
+                          type="file"
+                          accept=".mp3,audio/*"
+                          disabled={isLoading}
+                          onChange={handleSongFileChange}
                           className="absolute inset-0 opacity-0 cursor-pointer"
                           required
                       />

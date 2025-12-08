@@ -7,6 +7,7 @@ import Player from "@/components/Player";
 import SupabaseProvider from "@/providers/SupabaseProvider";
 import { ModalProvider } from "@/context/ModalContext";
 import GlobalPopup from "@/components/GlobalPopup";
+import AuthWrapper from "@/components/AuthWrapper";
 
 // Cấu hình font Monospace
 const font = Space_Mono({ 
@@ -51,17 +52,18 @@ export default function RootLayout({ children }) {
       <body className={font.className}>
         <SupabaseProvider>
           <ModalProvider>
-            <Sidebar>
-              {children}
-            </Sidebar>
-            <Player />
-            
-            {/* --- CÁC MODAL PHẢI NẰM Ở ĐÂY --- */}
-            <AuthModal />
-            <UploadModal /> {/* <--- Đảm bảo thành phần này xuất hiện */}
-            <GlobalPopup />
-            {/* -------------------------------- */}
-            
+            <AuthWrapper>
+              <Sidebar>
+                {children}
+              </Sidebar>
+              <Player />
+
+              {/* --- CÁC MODAL PHẢI NẰM Ở ĐÂY --- */}
+              <AuthModal />
+              <UploadModal /> {/* <--- Đảm bảo thành phần này xuất hiện */}
+              <GlobalPopup />
+              {/* -------------------------------- */}
+            </AuthWrapper>
           </ModalProvider>
         </SupabaseProvider>
       </body>
