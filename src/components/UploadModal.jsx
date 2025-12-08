@@ -273,33 +273,6 @@ const UploadModal = () => {
                         />
                     </div>
                 </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-neutral-900/50 p-4 rounded-lg border border-neutral-700 flex flex-col items-center gap-2 cursor-pointer relative hover:border-emerald-500/50 transition group">
-                      <Music size={24} className={`transition ${songFile ? 'text-emerald-400' : 'text-neutral-500 group-hover:text-emerald-500'}`}/>
-                      <span className="text-[10px] text-neutral-400 text-center truncate w-full">{songFile ? songFile.name : "Chọn file MP3"}</span>
-                      <input
-                          type="file"
-                          accept=".mp3,audio/*"
-                          disabled={isLoading}
-                          onChange={handleSongFileChange}
-                          className="absolute inset-0 opacity-0 cursor-pointer"
-                          required
-                      />
-                  </div>
-                  <div className="bg-neutral-900/50 p-4 rounded-lg border border-neutral-700 flex flex-col items-center gap-2 cursor-pointer relative hover:border-pink-500/50 transition group">
-                      <ImageIcon size={24} className={`transition ${imageFile ? 'text-pink-400' : 'text-neutral-500 group-hover:text-pink-500'}`}/>
-                      <span className="text-[10px] text-neutral-400 text-center truncate w-full">{imageFile ? imageFile.name : "Chọn ảnh bìa"}</span>
-                      <input 
-                          type="file" 
-                          accept="image/*" 
-                          disabled={isLoading} 
-                          onChange={(e) => setImageFile(e.target.files[0])}
-                          className="absolute inset-0 opacity-0 cursor-pointer"
-                          required
-                      />
-                  </div>
-              </div>
                 {/* Visibility Toggle (Non-Admin only) */}
                 {!isAdmin && (
                     <div className="flex p-1 bg-black/40 rounded-lg border border-white/5">
