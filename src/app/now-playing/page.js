@@ -573,10 +573,10 @@ const NowPlayingPage = () => {
 
   return (
     // MAIN CONTAINER: h-screen to fit viewport, overflow-hidden to prevent body scroll
-    <div className="w-full h-[70vh] grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden bg-neutral-100 dark:bg-black transition-colors animate-in fade-in duration-500 relative">
+    <div className="w-full h-[70vh] mt-8 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden bg-neutral-100 dark:bg-black transition-colors animate-in fade-in duration-500 relative">
 
       {/* --- CỘT TRÁI (VISUAL - Đã chỉnh lên 6 phần) --- */}
-      <div className="lg:col-span-6 flex flex-col items-center justify-center relative perspective-1000 h-full min-h-0 border-r border-dashed border-neutral-300 dark:border-white/10 pr-4">
+      <div className="lg:col-span-6 translate-y-1 flex flex-col items-center justify-center relative perspective-1000 h-full min-h-0 border-r border-dashed border-neutral-300 dark:border-white/10 pr-4">
           
           <div className="relative flex items-center justify-center scale-90 md:scale-100">
               {/* FUI Circle - ĐÃ GIẢM KÍCH THƯỚC */}
@@ -598,7 +598,7 @@ const NowPlayingPage = () => {
           </div>
 
           {/* ĐÃ GIẢM MARGIN-TOP ĐỂ ĐẨY LÊN GẦN HƠN (mt-4 md:mt-6) */}
-          <div className="mt-2 md:mt-4 text-center z-20 space-y-2 max-w-lg w-full">
+          <div className="md:mt-1 text-center z-20 space-y-2 max-w-lg w-full">
              <h1 className="text-3xl md:text-5xl font-black text-neutral-900 dark:text-white tracking-tighter uppercase font-mono truncate px-4">
                   <GlitchText text={song.title} />
              </h1>
