@@ -414,7 +414,7 @@ const NowPlayingPage = () => {
     fetchQueueSongs();
   }, [player.ids, player.activeId]);
 
-  // --- SYNC ACTIVE LINE LOGIC ---
+  // --- SYNC ACTIVE LINE LOGIC (ĐÃ SỬA LỖI UI) ---
   useEffect(() => {
       if (parsedLyrics.length > 0) {
           const index = parsedLyrics.findIndex((line, i) => {
@@ -424,13 +424,28 @@ const NowPlayingPage = () => {
           
           if (index !== -1 && index !== activeLineIndex) {
               setActiveLineIndex(index);
+              
+              // TÍNH TOÁN CUỘN THỦ CÔNG ĐỂ KHÔNG BỊ TRÔI UI CHÍNH
+              const container = lyricsContainerRef.current;
               const element = document.getElementById(`lyric-line-${index}`);
-              if (element) {
-                  element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+              if (element && container) {
+                  // Tính toán vị trí để dòng lyric nằm giữa khung nhìn
+                  const elementTop = element.offsetTop;
+                  const elementHeight = element.offsetHeight;
+                  const containerHeight = container.clientHeight;
+                  
+                  const targetScrollTop = elementTop - (containerHeight / 2) + (elementHeight / 2);
+
+                  // Chỉ cuộn container chứa lyric
+                  container.scrollTo({
+                      top: targetScrollTop,
+                      behavior: 'smooth'
+                  });
               }
           }
       }
-  }, [seek, parsedLyrics]);
+  }, [seek, parsedLyrics]); // Bỏ activeLineIndex khỏi dependencies
 
 
   // --- 2. AUDIO HANDLERS ---
@@ -674,16 +689,16 @@ const NowPlayingPage = () => {
                                         previewSize={160}
                                         fallbackIcon="disc"
                                    >
-                                       <img
-                                          src={queueSong.image_path}
-                                          className={`w-full h-full object-cover border transition-all duration-300
-                                                     grayscale group-hover:grayscale-0 ${
-                                             isCurrentlyPlaying
-                                                ? 'border-emerald-500/50'
-                                                : 'border-neutral-300 dark:border-white/20'
-                                          }`}
-                                          alt="Queue"
-                                       />
+                                        <img
+                                           src={queueSong.image_path}
+                                           className={`w-full h-full object-cover border transition-all duration-300
+                                                      grayscale group-hover:grayscale-0 ${
+                                              isCurrentlyPlaying
+                                                 ? 'border-emerald-500/50'
+                                                 : 'border-neutral-300 dark:border-white/20'
+                                           }`}
+                                           alt="Queue"
+                                        />
                                    </HoverImagePreview>
                                </div>
 
@@ -836,8 +851,12 @@ const NowPlayingPage = () => {
                              <span className="text-xs font-mono animate-pulse">DECODING_STREAM...</span>
                         </div>
                     ) : (
-                        <div className="flex-1 relative overflow-hidden" ref={lyricsContainerRef}>
-                             <div className="absolute inset-0 overflow-y-auto custom-scrollbar pr-2 pb-20 text-center">
+                        <div className="flex-1 relative overflow-hidden">
+                             {/* CHUYỂN REF VÀO ĐÂY ĐỂ TRÁNH SCROLL TOÀN BỘ TRANG */}
+                             <div 
+                                ref={lyricsContainerRef}
+                                className="absolute inset-0 overflow-y-auto custom-scrollbar pr-2 pb-20 text-center scroll-smooth"
+                             >
                                  {rawLyrics === "NO_LYRICS_AVAILABLE" ? (
                                      <div className="h-full flex flex-col items-center justify-center text-neutral-400 opacity-60">
                                          <FileText size={32} className="mb-2 opacity-50"/>
@@ -845,7 +864,7 @@ const NowPlayingPage = () => {
                                      </div>
                                  ) : parsedLyrics.length > 0 ? (
                                      // --- KARAOKE DISPLAY ---
-                                     <ul className="space-y-6 py-[40%] px-2">
+                                     <ul className="space-y-6 py-[40%] px-2 relative">
                                          {parsedLyrics.map((line, index) => {
                                              const isActive = index === activeLineIndex;
                                              return (
@@ -921,7 +940,7 @@ const NowPlayingPage = () => {
                                                 <img 
                                                     src={song.uploader_avatar} 
                                                     className="w-full h-full object-cover transition-all duration-500
-                                                     grayscale group-hover:grayscale-0" 
+                                                    grayscale group-hover:grayscale-0" 
                                                     alt={song.uploader}
                                                 />
                                             ) : (
