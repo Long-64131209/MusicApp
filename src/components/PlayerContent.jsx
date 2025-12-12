@@ -169,7 +169,7 @@ const PlayerContent = ({ song, songUrl }) => {
         else { setIsPlaying(false); setSeek(0); onPlayNext(); }
       },
       onload: () => { setDuration(newSound.duration()); setIsLoading(false); setError(null); },
-      onloaderror: (id, err) => { console.error("Err:", err); setIsLoading(false); },
+      // onloaderror: (id, err) => { console.error("Err:", err); setIsLoading(false); },
     });
 
     setSound(newSound);
