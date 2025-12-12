@@ -9,8 +9,11 @@ import AddSongModal from "@/components/AddSongModal";
 import EditPlaylistModal from "@/components/EditPlaylistModal";
 import usePlayer from "@/hooks/usePlayer";
 // IMPORT HOOK UI & COMPONENTS
-import useUI from "@/hooks/useUI"; 
+import useUI from "@/hooks/useUI";
 import { GlitchText, CyberCard, HoloButton, ScanlineOverlay, HorizontalGlitchText } from "@/components/CyberComponents";
+// IMPORT AUTH & MODAL
+import { useAuth } from "@/components/AuthWrapper";
+import { useModal } from "@/context/ModalContext";
 
 // --- SKELETON LOADER COMPONENT ---
 const PlaylistSkeleton = () => {
@@ -56,8 +59,10 @@ export default function PlaylistPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = searchParams.get("id");
-  const { alert, confirm } = useUI(); 
-  const player = usePlayer();
+  const { alert, confirm } = useUI();
+const player = usePlayer();
+  const { isAuthenticated } = useAuth();
+  const { openModal } = useModal();
 
   const [playlist, setPlaylist] = useState(null);
   const [songs, setSongs] = useState([]);
@@ -133,13 +138,19 @@ export default function PlaylistPage() {
 
   const handlePlayPlaylist = () => {
     if (!songs.length) return;
+
+    if (!isAuthenticated) {
+      openModal();
+      return;
+    }
+
     const ids = songs.map((item) => item.songs?.id).filter(Boolean).map(Number);
     const list = songs.map((i) => i.songs).filter(Boolean);
     const normalize = (s) => ({
       id: Number(s.id),
       title: s.title ?? "",
       author: s.author ?? "",
-      image_url: s.image_url ?? null,
+image_url: s.image_url ?? null,
       song_url: s.song_url ?? null,
       duration: s.duration ? Number(s.duration) : 0,
       ...s,
@@ -202,7 +213,7 @@ export default function PlaylistPage() {
         </CyberCard>
 
         {/* Info */}
-        <div className="flex flex-col gap-2 flex-1 pb-2 w-full">
+<div className="flex flex-col gap-2 flex-1 pb-2 w-full">
           <div className="flex items-center gap-2 mb-1">
               <span className="w-2 h-2 bg-emerald-500 animate-pulse rounded-none"></span>
               <p className="uppercase text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 tracking-[0.3em]">
@@ -259,7 +270,7 @@ export default function PlaylistPage() {
                 <th className="p-4 w-12 text-center">#</th>
                 <th className="p-4">Track_Title</th>
                 <th className="p-4 hidden md:table-cell">Artist</th>
-                <th className="p-4 text-right">Duration</th>
+<th className="p-4 text-right">Duration</th>
                 <th className="p-4 w-16 text-center">Action</th>
                 </tr>
             </thead>
@@ -273,6 +284,10 @@ export default function PlaylistPage() {
                     <tr
                     key={song.id}
                     onClick={() => {
+                        if (!isAuthenticated) {
+                          openModal();
+                          return;
+                        }
                         const ids = songs.map((item) => Number(item.songs?.id)).filter(Boolean);
                         const normalize = (s) => ({
                              id: Number(s.id),
@@ -308,7 +323,7 @@ export default function PlaylistPage() {
                                 </div>
                             </div>
                             <div className="flex flex-col min-w-0">
-                                <span className="font-bold text-neutral-800 dark:text-white group-hover/song:text-emerald-500 transition-colors truncate max-w-[150px] md:max-w-xs uppercase">
+<span className="font-bold text-neutral-800 dark:text-white group-hover/song:text-emerald-500 transition-colors truncate max-w-[150px] md:max-w-xs uppercase">
                                     {song.title}
                                 </span>
                                 <span className="text-xs text-neutral-500 md:hidden truncate">{song.author}</span>
