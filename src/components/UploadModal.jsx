@@ -339,10 +339,11 @@ const UploadModal = () => {
                     </span>
                     <input
                         type="file"
-                        accept=".srt,.txt" 
+                        accept=".srt,.txt"
                         disabled={isLoading}
                         onChange={(e) => setLyricFile(e.target.files[0])}
                         className="absolute inset-0 opacity-0 cursor-pointer"
+                        required
                     />
                 </div>
 

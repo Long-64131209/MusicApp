@@ -2,9 +2,12 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Lock, Globe, Music, Edit2, Trash2, Upload, X, Save, Image as ImageIcon, FileAudio, LayoutGrid, Disc } from "lucide-react";
+import { Lock, Globe, Music, Edit2, Trash2, Upload, X, Save, Image as ImageIcon, FileAudio, FileText, LayoutGrid, Disc } from "lucide-react";
 import useUI from "@/hooks/useUI";
 import useUploadModal from "@/hooks/useUploadModal";
+import usePlayer from "@/hooks/usePlayer";
+import { useAuth } from "@/components/AuthWrapper";
+import { useModal } from "@/context/ModalContext";
 // Import Full Cyber Components
 import { GlitchText, HoloButton, GlitchButton, CyberButton, CyberCard, ScanlineOverlay } from "@/components/CyberComponents";
 
@@ -48,7 +51,11 @@ const MyUploadsPage = () => {
   const [editForm, setEditForm] = useState({ title: '', author: '', isPublic: false });
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedLyricFile, setSelectedLyricFile] = useState(null);
   const [newDuration, setNewDuration] = useState(0);
+  const [currentSRT, setCurrentSRT] = useState('');
+  const [originalSRT, setOriginalSRT] = useState('');
+  const [loadingSRT, setLoadingSRT] = useState(false);
 
   // UI State
   const [activeTab, setActiveTab] = useState('uploads');
@@ -57,6 +64,9 @@ const MyUploadsPage = () => {
   // --- HOOKS ---
   const { alert, confirm } = useUI();
   const { onOpen } = useUploadModal();
+  const player = usePlayer();
+  const { isAuthenticated } = useAuth();
+  const { openModal } = useModal();
 
   useEffect(() => { getMyUploads(); }, []);
   useEffect(() => { if (activeTab === 'tuned' && loadingTuned) getMyTunedSongs(); }, [activeTab]);
@@ -92,13 +102,23 @@ const MyUploadsPage = () => {
     setLoadingTuned(false);
   };
 
-  const handleSelectedFileChange = async (e) => {
-    const file = e.target.files[0];
-    setSelectedFile(file);
-    if (file) {
-      try { const duration = await extractAudioDuration(file); setNewDuration(Math.floor(duration)); } 
-      catch (error) { setNewDuration(0); }
-    } else { setNewDuration(0); }
+
+
+
+  const onPlay = (id) => {
+    if (!isAuthenticated) {
+      openModal();
+      return;
+    }
+
+    player.setId(id);
+    player.setIds(filteredSongs.map((s) => s.id));
+
+    if (typeof window !== "undefined") {
+        const songMap = {};
+        filteredSongs.forEach(song => songMap[song.id] = song);
+        window.__SONG_MAP__ = { ...window.__SONG_MAP__, ...songMap };
+    }
   };
 
   const handleDeleteSong = async (songId) => {
@@ -112,15 +132,41 @@ const MyUploadsPage = () => {
     } catch (err) { alert(err.message, 'error'); }
   };
 
-  const startEditing = (song) => {
+  const startEditing = async (song) => {
     setEditingSong(song.id);
     setEditForm({ title: song.title, author: song.author, isPublic: song.is_public ?? false });
+
+    // Fetch current SRT if exists
+    if (song.lyric_url) {
+      setLoadingSRT(true);
+      try {
+        const res = await fetch(song.lyric_url);
+        if (res.ok) {
+          const text = await res.text();
+          setCurrentSRT(text);
+          setOriginalSRT(text);
+        } else {
+          setCurrentSRT('');
+          setOriginalSRT('');
+        }
+      } catch (err) {
+        console.error('Error fetching SRT:', err);
+        setCurrentSRT('');
+        setOriginalSRT('');
+      } finally {
+        setLoadingSRT(false);
+      }
+    } else {
+      setCurrentSRT('');
+      setOriginalSRT('');
+      setLoadingSRT(false);
+    }
   };
 
   const cancelEditing = () => {
     setEditingSong(null);
     setEditForm({ title: '', author: '', isPublic: false });
-    setSelectedFile(null); setSelectedImage(null);
+    setSelectedFile(null); setSelectedImage(null); setSelectedLyricFile(null);
   };
 
   const saveEdit = async () => {
@@ -130,9 +176,10 @@ const MyUploadsPage = () => {
       let updateData = { title: editForm.title.trim(), author: editForm.author?.trim() || 'Unknown', is_public: Boolean(editForm.isPublic) };
       if (selectedFile && newDuration > 0) updateData.duration = newDuration;
 
-      if (selectedFile || selectedImage) {
-        const uniqueID = crypto.randomUUID();
-        const safeTitle = editForm.title.trim().replace(/[^a-zA-Z0-9-]/g, "").toLowerCase();
+      let uniqueID, safeTitle;
+      if (selectedFile || selectedImage || selectedLyricFile) {
+        uniqueID = crypto.randomUUID();
+        safeTitle = editForm.title.trim().replace(/[^a-zA-Z0-9-]/g, "").toLowerCase();
         if (selectedFile) {
           const { data: sData, error: sErr } = await supabase.storage.from('songs').upload(`song-${safeTitle}-${uniqueID}`, selectedFile);
           if (sErr) throw sErr;
@@ -144,6 +191,14 @@ const MyUploadsPage = () => {
           if (iErr) throw iErr;
           const { data: url } = supabase.storage.from('images').getPublicUrl(iData.path);
           updateData.image_url = url.publicUrl;
+        }
+        if (selectedLyricFile) {
+          const fileExt = selectedLyricFile.name.split('.').pop() || 'txt';
+          const lyricPath = `lyric-${safeTitle}-${uniqueID}.${fileExt}`;
+          const { data: lyricData, error: lyricError } = await supabase.storage.from('songs').upload(lyricPath, selectedLyricFile);
+          if (lyricError) throw lyricError;
+          const { data: lyricUrl } = supabase.storage.from('songs').getPublicUrl(lyricData.path);
+          updateData.lyric_url = lyricUrl.publicUrl;
         }
       }
 
@@ -168,12 +223,14 @@ const MyUploadsPage = () => {
   }, [songsUploads, songsTuned, filter, activeTab]);
 
   // --- COMPONENT: USER SONG CARD (CYBER BRUTALISM & HOVER FIX) ---
-  const UserSongCard = ({ song, isEditing, isEditable }) => (
-    <CyberCard 
+  const UserSongCard = ({ song, isEditing, isEditable, onClick }) => (
+    <CyberCard
         className={`
-            group relative p-0 bg-white dark:bg-neutral-900/40 
+            group relative p-0 bg-white dark:bg-neutral-900/40
             ${isEditing ? 'border-emerald-500 ring-1 ring-emerald-500' : 'hover:border-emerald-500/50'}
+            ${!isEditing ? 'cursor-pointer' : ''}
         `}
+        onClick={() => !isEditing && onClick && onClick(song.id)}
     >
        {/* IMAGE AREA */}
        {/* group/img: dùng để điều khiển hiệu ứng khi hover vào ảnh
@@ -242,6 +299,15 @@ const MyUploadsPage = () => {
              <div className="space-y-1">
                 <label className="text-[8px] font-mono uppercase text-neutral-500">ARTIST_ID</label>
                 <input type="text" value={editForm.author} onChange={(e) => setEditForm({...editForm, author: e.target.value})} className="w-full bg-black/20 border border-neutral-500 dark:border-white/20 p-1.5 text-xs font-mono focus:border-emerald-500 outline-none text-neutral-900 dark:text-white rounded-none"/>
+             </div>
+             <div className={`relative p-3 rounded-none border-2 border-dashed transition-all duration-300 group cursor-pointer flex flex-col items-center justify-center gap-2 ${selectedLyricFile ? 'border-purple-500 bg-purple-500/10 dark:bg-purple-500/5' : 'border-neutral-300 bg-white hover:bg-neutral-50 hover:border-purple-500/50 dark:border-white/20 dark:bg-black/30 dark:hover:bg-white/5'}`}>
+                <div className={`p-2 rounded-none border ${selectedLyricFile ? 'border-purple-500 bg-purple-500/20 text-purple-600 dark:text-purple-400' : 'border-neutral-300 bg-neutral-100 text-neutral-500 dark:border-white/10 dark:bg-white/5 dark:text-neutral-400 group-hover:text-purple-500 group-hover:border-purple-500'}`}>
+                  <FileText size={20} />
+                </div>
+                <span className={`text-[9px] font-mono text-center truncate w-full uppercase ${selectedLyricFile ? 'text-purple-700 dark:text-purple-400 font-bold' : 'text-neutral-600 dark:text-neutral-400'}`}>
+                  {selectedLyricFile ? selectedLyricFile.name : "SELECT_LYRICS (.SRT)"}
+                </span>
+                <input type="file" accept=".srt,.txt" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setSelectedLyricFile(e.target.files[0])} />
              </div>
              <div className="flex gap-2">
                  <button onClick={() => setEditForm({...editForm, isPublic: true})} className={`flex-1 text-[9px] py-1 border rounded-none ${editForm.isPublic ? 'bg-emerald-500 text-black border-emerald-500 font-bold' : 'text-neutral-500 border-neutral-600'}`}>PUBLIC</button>
@@ -331,7 +397,7 @@ const MyUploadsPage = () => {
                       )}
 
                       {filteredSongs.map(song => (
-                         <UserSongCard key={song.id} song={song} isEditing={editingSong === song.id} isEditable={isEditable}/>
+                         <UserSongCard key={song.id} song={song} isEditing={editingSong === song.id} isEditable={isEditable} onClick={onPlay}/>
                       ))}
                    </div>
                 </div>

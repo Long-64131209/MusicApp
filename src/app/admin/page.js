@@ -387,14 +387,6 @@ const AdminDashboard = () => {
         
         {currentView === 'dashboard' && (
             <div className="flex gap-3 flex-wrap">
-                {/* NÚT UPLOAD */}
-                <CyberButton 
-                    onClick={() => uploadModal.onOpen()}
-                    className="flex items-center gap-2 text-xs py-2 px-4 h-auto rounded-none"
-                >
-                    <UploadCloud size={14}/> UPLOAD_SONG
-                </CyberButton>
-                
                 {/* CÁC NÚT PHỤ */}
                 <NeonButton onClick={handleSyncMusic} disabled={syncing} className="text-xs px-4 py-2 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-none">
                     {syncing ? <Loader2 className="animate-spin" size={14}/> : <RefreshCw size={14}/>} SYNC_API
@@ -476,9 +468,6 @@ const AdminDashboard = () => {
                         <h4 className="text-neutral-900 dark:text-white font-mono text-sm uppercase tracking-wider flex gap-2 items-center">
                             <TrendingUp size={16} className="text-emerald-500" /> Top_5_Streamed
                         </h4>
-                        <button onClick={() => { setSongSortType('plays'); setCurrentView('songs_list'); }} className="text-[9px] text-emerald-600 dark:text-emerald-500 hover:underline font-mono uppercase">
-                            VIEW_FULL
-                        </button>
                     </div>
                     
                     {/* List Container */}
@@ -532,9 +521,6 @@ const AdminDashboard = () => {
                         <h4 className="text-neutral-900 dark:text-white font-mono text-sm uppercase tracking-wider flex gap-2 items-center">
                             <Mic2 size={16} className="text-pink-500" /> Top_5_Artists
                         </h4>
-                        <button onClick={() => setCurrentView('db_artists_list')} className="text-[9px] text-pink-600 dark:text-pink-500 hover:underline font-mono uppercase">
-                            VIEW_FULL
-                        </button>
                     </div>
 
                     {/* List Container */}
