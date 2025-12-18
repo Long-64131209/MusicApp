@@ -301,7 +301,7 @@ const Sidebar = ({ children }) => {
 
                    {/* Nút Tuned Tracks */}
                    <button
-                      onClick={() => router.push('/user/library?tuned=true')}
+                      onClick={() => router.push('/tuned-tracks')}
                       className="flex items-center gap-2 w-full p-1.5 rounded-none hover:!text-emerald-400 hover:bg-neutral-200/50 dark:hover:bg-white/5 transition text-xs text-neutral-900 dark:text-neutral-300 font-medium group"
                    >
                       <div className="w-8 h-8 rounded-none bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center group-hover:text-emerald-500 transition shadow-sm border border-neutral-300 dark:border-white/5">
