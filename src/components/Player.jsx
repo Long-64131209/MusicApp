@@ -164,17 +164,17 @@ const Player = () => {
   // --- PLAYER ACTIVE ---
   return (
     <div className="
-        fixed bottom-0 w-full h-[80px] 
-        bg-white/95 dark:bg-black/90 backdrop-blur-xl 
-        border-t-2 border-neutral-300 dark:border-emerald-500/30 
-        px-4 py-2 z-50 
-        shadow-[0_-10px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_-5px_30px_rgba(16,185,129,0.1)] 
+        fixed bottom-0 w-full h-[80px]
+        bg-white/95 dark:bg-black/90 backdrop-blur-xl
+        border-t-2 border-neutral-300 dark:border-emerald-500/30
+        px-4 py-2 z-50
+        shadow-[0_-10px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_-5px_30px_rgba(16,185,129,0.1)]
         transition-all duration-500
     ">
       {/* Decor Line (Top Accent) */}
       <div className="absolute top-0 left-0 h-[2px] w-full bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-50"></div>
-      
-      <PlayerContent key={songUrl} song={song} songUrl={songUrl} />
+
+      <PlayerContent key={`${songUrl}-${player.playTrigger}`} song={song} songUrl={songUrl} />
     </div>
   );
 };

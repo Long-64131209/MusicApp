@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Howler } from "howler"; 
 import { 
   Info, 
@@ -149,8 +149,12 @@ const NowPlayingSkeleton = () => {
 const NowPlayingPage = () => {
   const player = usePlayer();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { alert } = useUI();
-  
+
+  // Đọc URL parameters
+  const fromPage = searchParams.get('from'); // Trang nguồn (home, search, playlist, etc.)
+
   const { initAudioNodes, setBass, setMid, setTreble, initAnalyzer } = useAudioFilters();
 
   // --- STATE ---
@@ -462,48 +466,61 @@ const NowPlayingPage = () => {
     const loadSettings = async () => {
       if (!song?.id) return;
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user) {
-            const { data: songSetting } = await supabase
-                .from('user_song_settings')
-                .select('settings')
-                .eq('user_id', session.user.id)
-                .eq('song_id', song.id)
-                .maybeSingle();
+        console.log("[NOW-PLAYING] Load settings for song:", song.id, "fromPage:", fromPage);
 
-            if (songSetting?.settings) {
-                applySettings({ ...songSetting.settings, volume: audioSettings.volume });
-                return;
-            }
+        // Chỉ load EQ settings nếu user bấm từ trang tuned-tracks
+        if (fromPage === 'tuned-tracks') {
+          console.log("[NOW-PLAYING] Loading EQ settings (from tuned-tracks)");
+          const { data: { session } } = await supabase.auth.getSession();
+
+          if (session?.user) {
+              const { data: songSetting } = await supabase
+                  .from('user_song_settings')
+                  .select('settings')
+                  .eq('user_id', session.user.id)
+                  .eq('song_id', song.id)
+                  .maybeSingle();
+
+              if (songSetting?.settings) {
+                  console.log("[NOW-PLAYING] Applied from database:", songSetting.settings);
+                  applySettings({ ...songSetting.settings, volume: audioSettings.volume });
+                  return;
+              }
+          }
+
+          const hardcodedDefault = getValuesForSong(song);
+          if (hardcodedDefault) {
+               console.log("[NOW-PLAYING] Applied hardcoded default:", hardcodedDefault);
+               applySettings({ ...hardcodedDefault, volume: audioSettings.volume });
+               return;
+          }
+
+          if (session?.user) {
+              const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('audio_settings')
+                  .eq('id', session.user.id)
+                  .single();
+
+              if (profile?.audio_settings) {
+                  console.log("[NOW-PLAYING] Applied from profile:", profile.audio_settings);
+                  applySettings(profile.audio_settings);
+                  return;
+              }
+          }
+        } else {
+          console.log("[NOW-PLAYING] Not from tuned-tracks page, setting to FLAT");
         }
 
-        const hardcodedDefault = getValuesForSong(song);
-        if (hardcodedDefault) {
-             applySettings({ ...hardcodedDefault, volume: audioSettings.volume });
-             return;
-        }
-
-        if (session?.user) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('audio_settings')
-                .eq('id', session.user.id)
-                .single();
-
-            if (profile?.audio_settings) {
-                applySettings(profile.audio_settings);
-                return;
-            }
-        }
-
+        // Ở các trang khác: luôn set về default (0, 0, 0)
         applySettings({ bass: 0, mid: 0, treble: 0, volume: audioSettings.volume });
+        console.log("[NOW-PLAYING] Set to FLAT (0,0,0)");
 
       } catch (err) { console.error("Error loading settings:", err); }
     };
     loadSettings();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [song?.id]); 
+  }, [song?.id, fromPage]);
 
   // --- HÀM LƯU (ĐÃ TẮT THÔNG BÁO LỖI) ---
   const handleSaveSettings = async () => {
@@ -644,6 +661,13 @@ const NowPlayingPage = () => {
           </div>
           
           <button onClick={() => router.back()} className="absolute top-0 left-0 lg:hidden p-4 text-neutral-500 hover:text-emerald-500 z-50"><ArrowLeft size={24} /></button>
+
+          {/* --- PAGE SOURCE INDICATOR --- */}
+          {fromPage && (
+            <div className="absolute top-4 right-4 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-none text-[10px] font-mono text-emerald-500 uppercase tracking-wider z-50">
+              FROM: {fromPage}
+            </div>
+          )}
       </div>
 
       {/* --- CỘT GIỮA (QUEUE) --- */}
