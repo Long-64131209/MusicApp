@@ -26,64 +26,8 @@ import Slider from "@/components/Slider";
 import SpectrumVisualizer from "@/components/SpectrumVisualizer";
 import useUI from "@/hooks/useUI";
 import { GlitchText, CyberButton, GlitchButton, ScanlineOverlay } from "@/components/CyberComponents";
+// Import Hover Preview
 import HoverImagePreview from "@/components/HoverImagePreview";
-
-// ==================================================================================
-// --- CUSTOM COMPONENT: HOVER MARQUEE (CHỮ CHẠY) ---
-// ==================================================================================
-const HoverMarquee = ({ children, className = "", speed = 10 }) => {
-  const containerRef = useRef(null);
-  const innerRef = useRef(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
-
-  useEffect(() => {
-    const calculate = () => {
-      if (containerRef.current && innerRef.current) {
-        const container = containerRef.current.offsetWidth;
-        const content = innerRef.current.scrollWidth;
-        setIsOverflowing(content > container);
-      }
-    };
-    calculate();
-    setTimeout(calculate, 500); // Re-calc after render
-    window.addEventListener('resize', calculate);
-    return () => window.removeEventListener('resize', calculate);
-  }, [children]);
-
-  return (
-    <div 
-      ref={containerRef} 
-      className={`relative overflow-hidden whitespace-nowrap group ${className}`}
-      style={{ maskImage: isOverflowing ? 'linear-gradient(to right, transparent, black 5%, black 95%, transparent)' : 'none' }}
-    >
-      {isOverflowing && (
-          <style jsx>{`
-            @keyframes marquee-slide {
-              0% { transform: translateX(0); }
-              100% { transform: translateX(-50%); }
-            }
-            .marquee-track {
-              display: inline-flex;
-              animation: marquee-slide ${speed}s linear infinite;
-              animation-play-state: paused; 
-            }
-            .group:hover .marquee-track {
-              animation-play-state: running;
-            }
-          `}</style>
-      )}
-
-      {isOverflowing ? (
-        <div className="marquee-track">
-           <div ref={innerRef} className="pr-12">{children}</div>
-           <div className="pr-12">{children}</div>
-        </div>
-      ) : (
-        <div ref={innerRef} className="truncate w-full block text-center">{children}</div>
-      )}
-    </div>
-  );
-};
 
 // ==================================================================================
 // --- 1. SRT PARSER ---
@@ -189,7 +133,6 @@ const NowPlayingPage = () => {
   const [realDuration, setRealDuration] = useState(0); 
   const [seek, setSeek] = useState(0); 
   
-  // Tab mặc định
   const [activeTab, setActiveTab] = useState('visual'); 
   
   const [rawLyrics, setRawLyrics] = useState(null);
@@ -222,7 +165,6 @@ const NowPlayingPage = () => {
       audioHandlers.current = { setBass, setMid, setTreble };
   }, [setBass, setMid, setTreble]);
 
-  // Tự động chuyển tab Equalizer khi lên desktop
   useEffect(() => {
       const handleResize = () => {
           if (window.innerWidth >= 1024 && activeTab === 'visual') {
@@ -240,7 +182,6 @@ const NowPlayingPage = () => {
       return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // --- SYNC SEEK & DURATION ---
   useEffect(() => {
     if (durationCheckRef.current) clearInterval(durationCheckRef.current);
     durationCheckRef.current = setInterval(() => {
@@ -257,7 +198,6 @@ const NowPlayingPage = () => {
     return () => { if (durationCheckRef.current) clearInterval(durationCheckRef.current); };
   }, [player.activeId]);
 
-  // --- FETCH SONG LOGIC ---
   useEffect(() => {
     if (!isMounted) return;
     const updateSong = async () => {
@@ -293,7 +233,6 @@ const NowPlayingPage = () => {
     updateSong();
   }, [player.activeId, isMounted]);
 
-  // --- FETCH LYRICS ---
   useEffect(() => { if (song) { setRawLyrics(null); setParsedLyrics([]); setActiveLineIndex(-1); setLoadingLyrics(false); } }, [song?.id]);
 
   useEffect(() => {
@@ -307,7 +246,6 @@ const NowPlayingPage = () => {
     }
   }, [activeTab, song]);
 
-  // --- FETCH QUEUE ---
   useEffect(() => {
     const fetchQueueSongs = async () => {
       if (!player.ids || player.ids.length === 0) { setQueueSongs([]); return; }
@@ -322,10 +260,8 @@ const NowPlayingPage = () => {
     fetchQueueSongs();
   }, [player.ids, player.activeId]);
 
-  // --- SCROLL LYRICS ---
   useEffect(() => { if (parsedLyrics.length > 0) { const index = parsedLyrics.findIndex((line, i) => { const nextLine = parsedLyrics[i + 1]; return seek >= line.time && (!nextLine || seek < nextLine.time); }); if (index !== -1 && index !== activeLineIndex) { setActiveLineIndex(index); const element = document.getElementById(`lyric-line-${index}`); if (element) { element.scrollIntoView({ behavior: 'smooth', block: 'center' }); } } } }, [seek, parsedLyrics]);
 
-  // --- LOAD & SAVE SETTINGS ---
   const applySettings = useCallback((settings) => { setAudioSettings(prev => ({...prev, ...settings})); const handlers = audioHandlers.current; if (settings.bass !== undefined && handlers.setBass) handlers.setBass(settings.bass); if (settings.mid !== undefined && handlers.setMid) handlers.setMid(settings.mid); if (settings.treble !== undefined && handlers.setTreble) handlers.setTreble(settings.treble); }, []);
 
   const handleAudioChange = (key, value) => { const numValue = parseFloat(value); setAudioSettings(prev => ({ ...prev, [key]: numValue })); if (['bass', 'mid', 'treble'].includes(key)) { if (song?.id) { const handlers = audioHandlers.current; setTimeout(() => { if (key === 'bass' && handlers.setBass) handlers.setBass(numValue); if (key === 'mid' && handlers.setMid) handlers.setMid(numValue); if (key === 'treble' && handlers.setTreble) handlers.setTreble(numValue); }, 0); } } };
@@ -394,18 +330,20 @@ const NowPlayingPage = () => {
           </div>
 
           <div className="mt-4 lg:mt-2 text-center z-20 space-y-2 max-w-lg w-full flex flex-col items-center">
+             {/* Title - Đã xóa Marquee, dùng GlitchText tĩnh */}
              <div className="w-full px-4 overflow-hidden">
-                <HoverMarquee className="text-2xl md:text-5xl font-black text-neutral-900 dark:text-white tracking-tighter uppercase font-mono w-full" speed={15}>
+                <h1 className="text-2xl md:text-5xl font-black text-neutral-900 dark:text-white tracking-tighter uppercase font-mono w-full truncate text-center">
                     <GlitchText text={song.title} />
-                </HoverMarquee>
+                </h1>
              </div>
 
              <div className="flex items-center justify-center gap-2 w-full px-4 lg:px-12">
                  <span className="w-4 md:w-8 h-px bg-emerald-500 shrink-0"></span>
+                 {/* Author - Đã xóa Marquee, dùng text tĩnh */}
                  <div className="overflow-hidden max-w-[200px] md:max-w-[300px]">
-                    <HoverMarquee className="text-xs md:text-base font-bold font-mono text-emerald-600 dark:text-emerald-500 tracking-[0.3em] uppercase" speed={10}>
+                    <p className="text-xs md:text-base font-bold font-mono text-emerald-600 dark:text-emerald-500 tracking-[0.3em] uppercase truncate text-center">
                         {song.author}
-                    </HoverMarquee>
+                    </p>
                  </div>
                  <span className="w-4 md:w-8 h-px bg-emerald-500 shrink-0"></span>
              </div>
@@ -455,9 +393,8 @@ const NowPlayingPage = () => {
       </div>
 
       {/* --- MOBILE TABS NAVIGATION (FLOATING, SQUARE, Z-INDEX 99999) --- */}
-      <div className="lg:hidden flex fixed bottom-24 left-1/2 -translate-x-1/2 w-[80%] max-w-md justify-center z-[99999]">
+      <div className="lg:hidden flex fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md justify-center z-[99999]">
           <div className="flex w-full bg-neutral-900/95 dark:bg-black/95 backdrop-blur-xl border border-neutral-500/50 shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
-              {/* Tab Visual = chỉ hiện đĩa */}
               <button onClick={() => setActiveTab('visual')} className={`flex-1 py-3 flex justify-center items-center border-r border-white/10 rounded-none transition-colors ${activeTab==='visual' ? 'text-emerald-500 bg-white/5' : 'text-neutral-400'}`}><Activity size={20}/></button>
               <button onClick={() => setActiveTab('queue')} className={`flex-1 py-3 flex justify-center items-center border-r border-white/10 rounded-none transition-colors ${activeTab==='queue' ? 'text-emerald-500 bg-white/5' : 'text-neutral-400'}`}><ListMusic size={20}/></button>
               <button onClick={() => setActiveTab('lyrics')} className={`flex-1 py-3 flex justify-center items-center border-r border-white/10 rounded-none transition-colors ${activeTab==='lyrics' ? 'text-emerald-500 bg-white/5' : 'text-neutral-400'}`}><Mic2 size={20}/></button>
@@ -467,7 +404,6 @@ const NowPlayingPage = () => {
       </div>
 
       {/* --- CỘT GIỮA (QUEUE) --- */}
-      {/* Mobile: Order-2 (dưới đĩa), flex nếu active tab = queue */}
       <div className={`lg:col-span-3 flex flex-col h-[50vh] lg:h-[103%] w-full lg:w-[80%] bg-white/60 dark:bg-black/30 backdrop-blur-xl border border-neutral-200 dark:border-white/10 rounded-none overflow-hidden shadow-xl z-20 relative lg:-translate-x-10 order-2 ${activeTab === 'queue' ? 'flex' : 'hidden lg:flex'}`}>
           <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-emerald-500 z-40"></div>
           <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-emerald-500 z-40"></div>
@@ -523,7 +459,6 @@ const NowPlayingPage = () => {
       </div>
 
       {/* --- CỘT PHẢI (TABS: EQ, LYRICS, INFO) --- */}
-      {/* Mobile: Order-2 (dưới đĩa), hiển thị nếu chọn đúng tab */}
       <div className={`lg:col-span-3 flex flex-col w-full lg:w-[135%] h-[60vh] lg:h-[103%] bg-white/80 dark:bg-black/40 backdrop-blur-2xl border border-neutral-200 dark:border-white/10 rounded-none overflow-hidden shadow-2xl z-30 relative lg:-translate-x-24 order-2 ${(activeTab === 'equalizer' || activeTab === 'lyrics' || activeTab === 'info') ? 'flex' : 'hidden lg:flex'}`}>
           <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-emerald-500 z-40"></div>
           <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-emerald-500 z-40"></div>
@@ -578,7 +513,6 @@ const NowPlayingPage = () => {
                                 ))}
                             </div>
                             <div className="flex gap-2 pt-2 w-full">
-                                {/* Button Save Full Width */}
                                 <CyberButton onClick={handleSaveSettings} disabled={isSaving} className="flex-1 w-full text-neutral-400 dark:hover:!text-white hover:text-green-500 transition p-1.5 justify-center border border-transparent hover:border-green-500/50 flex items-center gap-2 rounded-none" title="Save EQ Configuration">
                                     {isSaving ? <Loader2 className="animate-spin" size={14}/> : <Save size={14}/>}
                                     <span className="text-xs font-mono">SAVE_CONFIG</span>
