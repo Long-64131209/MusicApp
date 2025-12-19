@@ -170,7 +170,7 @@ const Navbar = ({ onToggleSidebar }) => {
 
   return (
     <div className="
-        w-full max-w-[100vw] overflow-x-hidden /* Chặn tràn ngang */
+        w-full max-w-[100vw] /* Chặn tràn ngang */
         h-14 md:h-16 /* Cố định chiều cao */
         flex items-center justify-between px-4 md:px-6 
         bg-white/90 dark:bg-black/90 backdrop-blur-md 
