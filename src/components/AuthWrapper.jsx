@@ -3,7 +3,7 @@
 import { useEffect, useState, createContext, useContext } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-// Khởi tạo Auth Context
+// Create auth context to provide authentication state to components
 const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
@@ -14,36 +14,26 @@ const AuthWrapper = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Lấy session ban đầu khi load trang
+    // Get initial session
     const getInitialSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-        setUser(session?.user ?? null);
-      } catch (error) {
-        console.error("Auth Error:", error);
-      } finally {
-        setLoading(false);
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
     };
 
     getInitialSession();
 
-    // 2. Lắng nghe thay đổi trạng thái đăng nhập
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-        
-        // ĐÃ XÓA LOGIC PRESENCE TẠI ĐÂY ĐỂ TRÁNH XUNG ĐỘT VỚI ADMIN DASHBOARD
       }
     );
 
-    // Cleanup function
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   return (
