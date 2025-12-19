@@ -269,43 +269,88 @@ const AdminDashboard = () => {
       }
   }, [uploadModal.isOpen]);
 
-  // --- PRESENCE LOGIC (ONLINE STATUS) ---
-  useEffect(() => {
-    // Kênh theo dõi user online
-    const channel = supabase.channel('online-users', {
-        config: {
-            presence: {
-                key: 'admin-dashboard-listener',
-            },
-        },
-    });
+// --- PRESENCE LOGIC (ONLINE STATUS) ---
+useEffect(() => {
+    let channel = null;
+    let authListener = null;
 
-    channel
-        .on('presence', { event: 'sync' }, () => {
-            const newState = channel.presenceState();
-            const onlineIds = new Set();
-            
-            for (const id in newState) {
-                const users = newState[id];
-                users.forEach(u => {
-                    if (u.user_id) onlineIds.add(u.user_id);
-                });
-            }
-            setOnlineUsers(onlineIds);
-        })
-        .subscribe(async (status) => {
+    const handlePresenceSync = () => {
+        if (!channel) return;
+        const newState = channel.presenceState();
+        const onlineIds = new Set();
+
+        Object.keys(newState).forEach((key) => {
+            newState[key].forEach((presence) => {
+                if (presence.user_id) onlineIds.add(presence.user_id);
+            });
+        });
+
+        setOnlineUsers(onlineIds);
+    };
+
+    const createChannelForUser = async (user) => {
+        if (!user) return;
+
+        // If an old channel exists, remove it first
+        if (channel) {
+            try { supabase.removeChannel(channel); } catch (e) { /* ignore */ }
+        }
+
+        channel = supabase.channel('online-users', {
+            config: {
+                // Use the unique user id as presence key so entries don't collide
+                presence: { key: user.id },
+            },
+        });
+
+        channel.on('presence', { event: 'sync' }, handlePresenceSync);
+
+        await channel.subscribe(async (status) => {
             if (status === 'SUBSCRIBED') {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
+                try {
                     await channel.track({ user_id: user.id, online_at: new Date().toISOString() });
+                } catch (err) {
+                    console.warn('Presence track failed', err);
+                }
+                // Update local state immediately after subscribe
+                handlePresenceSync();
+            }
+        });
+    };
+
+    (async () => {
+        // Try to get current session first
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+            await createChannelForUser(session.user);
+        }
+
+        // Also listen for auth state changes (in case session isn't ready yet)
+        const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session?.user) {
+                createChannelForUser(session.user);
+            }
+            if (event === 'SIGNED_OUT') {
+                setOnlineUsers(new Set());
+                if (channel) {
+                    try { supabase.removeChannel(channel); } catch (e) { }
+                    channel = null;
                 }
             }
         });
+        authListener = listener;
+    })();
 
     return () => {
-        supabase.removeChannel(channel);
+        if (authListener?.subscription) {
+            try { authListener.subscription.unsubscribe(); } catch (e) { }
+        }
+        if (channel) {
+            try { supabase.removeChannel(channel); } catch (e) { }
+            channel = null;
+        }
     };
-  }, []);
+}, []);
 
   useEffect(() => {
     const init = async () => {
