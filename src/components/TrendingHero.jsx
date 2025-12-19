@@ -29,8 +29,9 @@ const TrendingHero = ({ songs: initialSongs, artists: initialArtists }) => {
     const [artistsData, setArtistsData] = useState(initialArtists || []);
     const [trendingSongs, setTrendingSongs] = useState(initialSongs || []);
 
-    // --- LOGIC FETCH DỮ LIỆU TỪ SUPABASE ---
+    // --- LOGIC FETCH DỮ LIỆU TỪ SUPABASE (REALTIME) ---
     useEffect(() => {
+        // Hàm fetch dữ liệu mới nhất
         const fetchFreshData = async () => {
             try {
                 // 1. LẤY TOP SONGS
@@ -107,11 +108,33 @@ const TrendingHero = ({ songs: initialSongs, artists: initialArtists }) => {
             }
         };
 
+        // Gọi lần đầu khi mount
         fetchFreshData();
-        const interval = setInterval(fetchFreshData, 30000); 
-        return () => clearInterval(interval);
 
-    }, []);
+        // [THÊM MỚI] Thiết lập Realtime Subscription
+        const channel = supabase
+            .channel('trending-hero-updates')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE', // Lắng nghe sự kiện UPDATE (khi play_count thay đổi)
+                    schema: 'public',
+                    table: 'songs',
+                },
+                () => {
+                    // Khi có thay đổi, gọi lại hàm fetch để cập nhật UI
+                    console.log("Realtime update detected in songs table!");
+                    fetchFreshData();
+                }
+            )
+            .subscribe();
+
+        // Cleanup function
+        return () => {
+            supabase.removeChannel(channel);
+        };
+
+    }, []); // Chỉ chạy 1 lần khi mount, nhưng subscription sẽ hoạt động liên tục
 
     const topArtists = artistsData;
     const activeSong = trendingSongs && trendingSongs.length > 0 ? trendingSongs[currentIndex] : null;
@@ -272,7 +295,10 @@ const TrendingHero = ({ songs: initialSongs, artists: initialArtists }) => {
                                 </HoloButton>
                                 <div className="flex flex-col justify-center px-4 border-l border-neutral-400 dark:border-white/20">
                                     <span className="text-[8px] md:text-[9px] font-mono text-neutral-500 uppercase">Total_Plays</span>
-                                    <span className="text-xs md:text-sm font-bold font-mono text-neutral-800 dark:text-white">{activeSong.play_count || 0}</span>
+                                    {/* Hiển thị số lượt nghe REALTIME */}
+                                    <span className="text-xs md:text-sm font-bold font-mono text-neutral-800 dark:text-white animate-pulse">
+                                        {activeSong.play_count || 0}
+                                    </span>
                                 </div>
                             </div>
                         </div>
